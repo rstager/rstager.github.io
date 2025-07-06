@@ -4,7 +4,7 @@ class PacmanGame {
         this.ctx = this.canvas.getContext('2d');
         this.score = 0;
         this.lives = 3;
-        this.gameRunning = true;
+        this.gameRunning = false; // Don't start game immediately
         this.tileSize = 20;
         this.cols = this.canvas.width / this.tileSize;
         this.rows = this.canvas.height / this.tileSize;
@@ -60,8 +60,8 @@ class PacmanGame {
         this.initializeDots();
         this.setupControls();
         this.setupAudio();
-        this.startBackgroundMusic();
-        this.gameLoop();
+        this.setupStartButton();
+        // Game will start when start button is pressed
     }
     
     generateMaze() {
@@ -443,6 +443,37 @@ class PacmanGame {
                     break;
             }
         });
+    }
+    
+    setupStartButton() {
+        const startButton = document.getElementById('startButton');
+        startButton.addEventListener('click', () => {
+            this.startGame();
+        });
+    }
+    
+    startGame() {
+        const startButton = document.getElementById('startButton');
+        const startMenu = document.getElementById('startMenu');
+        const gameContainer = document.getElementById('gameContainer');
+        
+        // Start the float up animation
+        startButton.classList.add('float-up');
+        
+        // After the button animation, fade out the menu and show the game
+        setTimeout(() => {
+            startMenu.classList.add('fade-out');
+            
+            // Show game container and start game after fade out
+            setTimeout(() => {
+                startMenu.style.display = 'none';
+                gameContainer.style.display = 'block';
+                gameContainer.classList.add('fade-in');
+                this.gameRunning = true;
+                this.startBackgroundMusic();
+                this.gameLoop();
+            }, 1000); // Wait for fade out animation
+        }, 500); // Wait for button float animation
     }
     
     setupAudio() {

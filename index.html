@@ -36,10 +36,345 @@
             margin-top: 10px;
             font-size: 14px;
         }
+        
+        #startMenu {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #000;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            z-index: 1000;
+            padding: 0 20px;
+        }
+        
+        #centerContent {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        #leftDecorations, #rightDecorations {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+            align-items: center;
+            width: 120px;
+            flex-shrink: 0;
+        }
+        
+        #leftDecorations {
+            transform: translateX(-40px);
+        }
+        
+        
+        #gameTitle {
+            color: #ff0;
+            font-size: 96px;
+            font-family: 'Impact', 'Arial Black', 'Bebas Neue', 'Oswald', sans-serif;
+            font-weight: 900;
+            margin-bottom: 50px;
+            text-shadow: 6px 6px 12px #000, 0 0 30px #ff0, 3px 3px 6px #f80, -2px -2px 4px #fff;
+            letter-spacing: 12px;
+            animation: titleFloatTiltSmooth 6s ease-in-out infinite;
+            transform-style: preserve-3d;
+            text-transform: uppercase;
+            -webkit-text-stroke: 2px #000;
+        }
+        
+        #startButton {
+            background: linear-gradient(135deg, #ff0 0%, #ffa500 100%);
+            color: #000;
+            font-size: 24px;
+            font-weight: bold;
+            padding: 20px 40px;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            box-shadow: 0 8px 16px rgba(255, 255, 0, 0.3),
+                        inset 0 2px 4px rgba(255, 255, 255, 0.3),
+                        inset 0 -2px 4px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+            letter-spacing: 2px;
+            animation: buttonFloatTiltSmooth 4s ease-in-out infinite;
+            transform-style: preserve-3d;
+        }
+        
+        #startButton:hover {
+            transform: scale(1.1);
+            box-shadow: 0 12px 24px rgba(255, 255, 0, 0.5),
+                        inset 0 2px 4px rgba(255, 255, 255, 0.4),
+                        inset 0 -2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        #startButton:active {
+            transform: scale(0.95);
+        }
+        
+        #creditText {
+            color: #ff0;
+            font-size: 16px;
+            font-family: 'Arial', sans-serif;
+            font-weight: normal;
+            margin-top: 30px;
+            text-shadow: 2px 2px 4px #000, 0 0 10px #ff0;
+            letter-spacing: 1px;
+            animation: buttonFloatTiltSmooth 4s ease-in-out infinite;
+            transform-style: preserve-3d;
+            opacity: 0.9;
+        }
+        
+        @keyframes floatUp {
+            0% {
+                transform: translateY(0) scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: translateY(-50px) scale(1.2);
+                opacity: 0.8;
+            }
+            100% {
+                transform: translateY(-100px) scale(1.5);
+                opacity: 0;
+            }
+        }
+        
+        @keyframes fadeOut {
+            0% {
+                opacity: 1;
+            }
+            100% {
+                opacity: 0;
+            }
+        }
+        
+        .float-up {
+            animation: floatUp 1s ease-out forwards;
+        }
+        
+        .fade-out {
+            animation: fadeOut 1s ease-out forwards;
+        }
+        
+        @keyframes titleFloat {
+            0%, 100% {
+                transform: translateY(0px);
+            }
+            50% {
+                transform: translateY(-20px);
+            }
+        }
+        
+        @keyframes buttonFloat {
+            0%, 100% {
+                transform: translateY(0px);
+            }
+            50% {
+                transform: translateY(-15px);
+            }
+        }
+        
+        @keyframes fadeIn {
+            0% {
+                opacity: 0;
+                transform: scale(0.8);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+        
+        .fade-in {
+            animation: fadeIn 1s ease-out forwards;
+        }
+        
+        .ghost {
+            width: 120px;
+            height: 150px;
+            border-radius: 60px 60px 0 0;
+            position: relative;
+            animation: ghostFloat 4s ease-in-out infinite;
+            transform: rotate(15deg);
+        }
+        
+        .ghost::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 25px;
+            background: 
+                radial-gradient(ellipse at 15% 0%, currentColor 70%, transparent 70%),
+                radial-gradient(ellipse at 35% 0%, currentColor 70%, transparent 70%),
+                radial-gradient(ellipse at 55% 0%, currentColor 70%, transparent 70%),
+                radial-gradient(ellipse at 75% 0%, currentColor 70%, transparent 70%),
+                radial-gradient(ellipse at 95% 0%, currentColor 70%, transparent 70%);
+            background-size: 24px 25px;
+            background-position: 0px 0px, 20px 0px, 40px 0px, 60px 0px, 80px 0px;
+        }
+        
+        .ghost::before {
+            content: '';
+            position: absolute;
+            top: 40px;
+            left: 20px;
+            width: 80px;
+            height: 45px;
+            background: radial-gradient(circle at 20px 20px, #fff 12px, transparent 12px),
+                        radial-gradient(circle at 60px 20px, #fff 12px, transparent 12px),
+                        radial-gradient(circle at 25px 25px, #000 6px, transparent 6px),
+                        radial-gradient(circle at 55px 25px, #000 6px, transparent 6px);
+        }
+        
+        .ghost-red {
+            background-color: #ff0000;
+            color: #ff0000;
+        }
+        
+        .ghost-pink {
+            background-color: #ffb8ff;
+            color: #ffb8ff;
+            animation-delay: -2s;
+        }
+        
+        .pacman {
+            width: 120px;
+            height: 120px;
+            position: relative;
+            animation: pacmanFloat 3s ease-in-out infinite;
+            transform: rotate(245deg);
+            z-index: 10;
+            background: conic-gradient(from 20deg, transparent 40deg, currentColor 40deg, currentColor 320deg, transparent 320deg);
+            border-radius: 50%;
+        }
+        
+        .pacman::before {
+            display: none;
+        }
+        
+        .pacman-yellow {
+            color: #ff0;
+        }
+        
+        .pacman-red {
+            color: #f00;
+            animation-delay: -1.5s;
+        }
+        
+        @keyframes decorationFloat {
+            0%, 100% {
+                transform: translateY(0px);
+            }
+            50% {
+                transform: translateY(-25px);
+            }
+        }
+        
+        @keyframes titleFloatTiltSmooth {
+            0%, 100% {
+                transform: translateY(0px) rotate(0deg) scale(1);
+            }
+            10% {
+                transform: translateY(-2px) rotate(-0.3deg) scale(1.005);
+            }
+            20% {
+                transform: translateY(-4px) rotate(-0.6deg) scale(1.01);
+            }
+            30% {
+                transform: translateY(-7px) rotate(-0.8deg) scale(1.015);
+            }
+            40% {
+                transform: translateY(-10px) rotate(-0.5deg) scale(1.02);
+            }
+            50% {
+                transform: translateY(-12px) rotate(0deg) scale(1.025);
+            }
+            60% {
+                transform: translateY(-10px) rotate(0.5deg) scale(1.02);
+            }
+            70% {
+                transform: translateY(-7px) rotate(0.8deg) scale(1.015);
+            }
+            80% {
+                transform: translateY(-4px) rotate(0.6deg) scale(1.01);
+            }
+            90% {
+                transform: translateY(-2px) rotate(0.3deg) scale(1.005);
+            }
+        }
+        
+        @keyframes buttonFloatTiltSmooth {
+            0%, 100% {
+                transform: translateY(0px) rotate(0deg) scale(1);
+            }
+            12.5% {
+                transform: translateY(-1px) rotate(0.2deg) scale(1.003);
+            }
+            25% {
+                transform: translateY(-3px) rotate(0.5deg) scale(1.007);
+            }
+            37.5% {
+                transform: translateY(-6px) rotate(0.7deg) scale(1.012);
+            }
+            50% {
+                transform: translateY(-8px) rotate(0deg) scale(1.015);
+            }
+            62.5% {
+                transform: translateY(-6px) rotate(-0.7deg) scale(1.012);
+            }
+            75% {
+                transform: translateY(-3px) rotate(-0.5deg) scale(1.007);
+            }
+            87.5% {
+                transform: translateY(-1px) rotate(-0.2deg) scale(1.003);
+            }
+        }
+        
+        @keyframes pacmanFloat {
+            0%, 100% {
+                transform: translateY(0px) rotate(245deg);
+            }
+            50% {
+                transform: translateY(-25px) rotate(245deg);
+            }
+        }
+        
+        @keyframes ghostFloat {
+            0%, 100% {
+                transform: translateY(0px) rotate(15deg);
+            }
+            50% {
+                transform: translateY(-25px) rotate(15deg);
+            }
+        }
     </style>
 </head>
 <body>
-    <div id="gameContainer">
+    <div id="startMenu">
+        <div id="leftDecorations">
+            <div class="ghost ghost-red"></div>
+            <div class="ghost ghost-pink"></div>
+        </div>
+        
+        <div id="centerContent">
+            <h1 id="gameTitle">PacMan2!</h1>
+            <div id="startButton">START</div>
+            <div id="creditText">Brought to you by Logan & Uncle Roger</div>
+        </div>
+        
+        <div id="rightDecorations">
+            <div class="pacman pacman-yellow"></div>
+            <div class="pacman pacman-red"></div>
+        </div>
+    </div>
+    
+    <div id="gameContainer" style="display: none;">
         <canvas id="gameCanvas" width="800" height="600"></canvas>
         <div id="gameInfo">
             <div style="display: flex; justify-content: space-between; width: 800px;">
