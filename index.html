@@ -42,11 +42,21 @@
     <div id="gameContainer">
         <canvas id="gameCanvas" width="800" height="600"></canvas>
         <div id="gameInfo">
-            <div>Score: <span id="score">0</span></div>
-            <div>Lives: <span id="lives">3</span></div>
+            <div style="display: flex; justify-content: space-between; width: 800px;">
+                <div style="text-align: left;">
+                    <div style="color: #ff0; font-weight: bold;">Player 1 (Yellow)</div>
+                    <div>Score: <span id="player1Score">0</span></div>
+                    <div>Lives: <span id="player1Lives">3</span></div>
+                </div>
+                <div style="text-align: right;">
+                    <div style="color: #f00; font-weight: bold;">Player 2 (Red)</div>
+                    <div>Score: <span id="player2Score">0</span></div>
+                    <div>Lives: <span id="player2Lives">3</span></div>
+                </div>
+            </div>
         </div>
         <div id="controls">
-            Use arrow keys to move Pacman
+            Player 1: WASD keys | Player 2: Arrow keys
         </div>
     </div>
     <script src="pacman.js"></script>

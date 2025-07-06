@@ -4,14 +4,14 @@ class PacmanGame {
         this.ctx = this.canvas.getContext('2d');
         this.score = 0;
         this.lives = 3;
-        this.gameRunning = false;
+        this.gameRunning = true;
         this.tileSize = 20;
         this.cols = this.canvas.width / this.tileSize;
         this.rows = this.canvas.height / this.tileSize;
         
         this.maze = this.generateMaze();
         
-        this.pacman = {
+        this.player1 = {
             x: 1,
             y: 1,
             pixelX: 1 * this.tileSize,
@@ -21,7 +21,30 @@ class PacmanGame {
             mouthOpen: true,
             mouthFrame: 0,
             moving: false,
-            speed: 2
+            speed: 2,
+            score: 0,
+            lives: 3,
+            color: '#ff0',
+            name: 'Player 1',
+            active: true
+        };
+        
+        this.player2 = {
+            x: this.cols - 2,
+            y: 1,
+            pixelX: (this.cols - 2) * this.tileSize,
+            pixelY: 1 * this.tileSize,
+            direction: 'left',
+            nextDirection: 'left',
+            mouthOpen: true,
+            mouthFrame: 0,
+            moving: false,
+            speed: 2,
+            score: 0,
+            lives: 3,
+            color: '#f00',
+            name: 'Player 2',
+            active: true
         };
         
         this.ghosts = [
@@ -32,6 +55,8 @@ class PacmanGame {
         ];
         
         this.dots = [];
+        this.firstPlayerEliminated = false; // Track if first player has been eliminated
+        this.gameEnding = false; // Track if game is already ending
         this.initializeDots();
         this.setupControls();
         this.setupAudio();
@@ -377,21 +402,44 @@ class PacmanGame {
     setupControls() {
         document.addEventListener('keydown', (e) => {
             switch(e.key) {
+                // Player 1 controls (WASD)
+                case 'w':
+                case 'W':
+                    e.preventDefault();
+                    if (this.player1.active) this.player1.nextDirection = 'up';
+                    break;
+                case 's':
+                case 'S':
+                    e.preventDefault();
+                    if (this.player1.active) this.player1.nextDirection = 'down';
+                    break;
+                case 'a':
+                case 'A':
+                    e.preventDefault();
+                    if (this.player1.active) this.player1.nextDirection = 'left';
+                    break;
+                case 'd':
+                case 'D':
+                    e.preventDefault();
+                    if (this.player1.active) this.player1.nextDirection = 'right';
+                    break;
+                    
+                // Player 2 controls (Arrow keys)
                 case 'ArrowUp':
                     e.preventDefault();
-                    this.pacman.nextDirection = 'up';
+                    if (this.player2.active) this.player2.nextDirection = 'up';
                     break;
                 case 'ArrowDown':
                     e.preventDefault();
-                    this.pacman.nextDirection = 'down';
+                    if (this.player2.active) this.player2.nextDirection = 'down';
                     break;
                 case 'ArrowLeft':
                     e.preventDefault();
-                    this.pacman.nextDirection = 'left';
+                    if (this.player2.active) this.player2.nextDirection = 'left';
                     break;
                 case 'ArrowRight':
                     e.preventDefault();
-                    this.pacman.nextDirection = 'right';
+                    if (this.player2.active) this.player2.nextDirection = 'right';
                     break;
             }
         });
@@ -603,13 +651,15 @@ class PacmanGame {
         return true;
     }
     
-    updatePacman() {
+    updatePlayer(player) {
+        if (!player.active) return;
+        
         // Handle direction changes when reaching tile centers
-        if (!this.pacman.moving) {
-            let newX = this.pacman.x;
-            let newY = this.pacman.y;
+        if (!player.moving) {
+            let newX = player.x;
+            let newY = player.y;
             
-            switch(this.pacman.nextDirection) {
+            switch(player.nextDirection) {
                 case 'up':
                     newY--;
                     break;
@@ -625,61 +675,66 @@ class PacmanGame {
             }
             
             if (this.canMove(newX, newY)) {
-                this.pacman.direction = this.pacman.nextDirection;
-                this.pacman.moving = true;
+                player.direction = player.nextDirection;
+                player.moving = true;
                 this.playMoveSound();
             }
         }
         
         // Smooth movement between tiles
-        if (this.pacman.moving) {
-            switch(this.pacman.direction) {
+        if (player.moving) {
+            switch(player.direction) {
                 case 'up':
-                    this.pacman.pixelY -= this.pacman.speed;
-                    if (this.pacman.pixelY <= (this.pacman.y - 1) * this.tileSize) {
-                        this.pacman.y--;
-                        this.pacman.pixelY = this.pacman.y * this.tileSize;
-                        this.pacman.moving = false;
+                    player.pixelY -= player.speed;
+                    if (player.pixelY <= (player.y - 1) * this.tileSize) {
+                        player.y--;
+                        player.pixelY = player.y * this.tileSize;
+                        player.moving = false;
                     }
                     break;
                 case 'down':
-                    this.pacman.pixelY += this.pacman.speed;
-                    if (this.pacman.pixelY >= (this.pacman.y + 1) * this.tileSize) {
-                        this.pacman.y++;
-                        this.pacman.pixelY = this.pacman.y * this.tileSize;
-                        this.pacman.moving = false;
+                    player.pixelY += player.speed;
+                    if (player.pixelY >= (player.y + 1) * this.tileSize) {
+                        player.y++;
+                        player.pixelY = player.y * this.tileSize;
+                        player.moving = false;
                     }
                     break;
                 case 'left':
-                    this.pacman.pixelX -= this.pacman.speed;
-                    if (this.pacman.pixelX <= (this.pacman.x - 1) * this.tileSize) {
-                        this.pacman.x--;
-                        this.pacman.pixelX = this.pacman.x * this.tileSize;
-                        this.pacman.moving = false;
+                    player.pixelX -= player.speed;
+                    if (player.pixelX <= (player.x - 1) * this.tileSize) {
+                        player.x--;
+                        player.pixelX = player.x * this.tileSize;
+                        player.moving = false;
                     }
                     break;
                 case 'right':
-                    this.pacman.pixelX += this.pacman.speed;
-                    if (this.pacman.pixelX >= (this.pacman.x + 1) * this.tileSize) {
-                        this.pacman.x++;
-                        this.pacman.pixelX = this.pacman.x * this.tileSize;
-                        this.pacman.moving = false;
+                    player.pixelX += player.speed;
+                    if (player.pixelX >= (player.x + 1) * this.tileSize) {
+                        player.x++;
+                        player.pixelX = player.x * this.tileSize;
+                        player.moving = false;
                     }
                     break;
             }
         }
         
-        this.pacman.mouthFrame = (this.pacman.mouthFrame + 1) % 10;
-        this.pacman.mouthOpen = this.pacman.mouthFrame < 5;
+        player.mouthFrame = (player.mouthFrame + 1) % 10;
+        player.mouthOpen = player.mouthFrame < 5;
         
-        this.collectDot();
+        this.collectDot(player);
     }
     
-    collectDot() {
-        const dot = this.dots.find(d => d.x === this.pacman.x && d.y === this.pacman.y && !d.collected);
+    updatePacman() {
+        this.updatePlayer(this.player1);
+        this.updatePlayer(this.player2);
+    }
+    
+    collectDot(player) {
+        const dot = this.dots.find(d => d.x === player.x && d.y === player.y && !d.collected);
         if (dot) {
             dot.collected = true;
-            this.score += 10;
+            player.score += 10;
             this.updateScore();
             this.playDotSound();
         }
@@ -719,14 +774,27 @@ class PacmanGame {
                 
                 let chosenDirection = null;
                 
-                // Check if Pacman is in line of sight or can be chased
-                const pacmanTileX = Math.floor(this.pacman.pixelX / this.tileSize);
-                const pacmanTileY = Math.floor(this.pacman.pixelY / this.tileSize);
+                // Check if any active player is in line of sight
+                const players = [this.player1, this.player2].filter(p => p.active);
+                let targetPlayer = null;
+                let minDistance = Infinity;
                 
-                // First check if we can see Pacman from current position
-                if (this.canSeeTarget(ghost.x, ghost.y, pacmanTileX, pacmanTileY)) {
-                    // Direct line of sight - move towards Pacman
-                    chosenDirection = this.getDirectionToTarget(ghost.x, ghost.y, pacmanTileX, pacmanTileY);
+                // Find the closest visible player
+                for (let player of players) {
+                    const playerTileX = Math.floor(player.pixelX / this.tileSize);
+                    const playerTileY = Math.floor(player.pixelY / this.tileSize);
+                    const distance = Math.abs(ghost.x - playerTileX) + Math.abs(ghost.y - playerTileY);
+                    
+                    // Check direct line of sight
+                    if (this.canSeeTarget(ghost.x, ghost.y, playerTileX, playerTileY) && distance < minDistance) {
+                        targetPlayer = { x: playerTileX, y: playerTileY };
+                        minDistance = distance;
+                    }
+                }
+                
+                // If we found a visible player, chase them
+                if (targetPlayer) {
+                    chosenDirection = this.getDirectionToTarget(ghost.x, ghost.y, targetPlayer.x, targetPlayer.y);
                     
                     // Make sure the chosen direction is valid and not blocked
                     if (!validDirections.includes(chosenDirection)) {
@@ -734,7 +802,7 @@ class PacmanGame {
                     }
                 }
                 
-                // If no direct line of sight, check if moving in any direction would reveal Pacman
+                // If no direct line of sight, check if moving in any direction would reveal a player
                 if (!chosenDirection) {
                     for (let direction of validDirections) {
                         let checkX = ghost.x;
@@ -756,11 +824,17 @@ class PacmanGame {
                                 break;
                         }
                         
-                        // Check if from this new position, we can see Pacman
-                        if (this.canSeeTarget(checkX, checkY, pacmanTileX, pacmanTileY)) {
-                            chosenDirection = direction;
-                            break; // Found a direction that leads to seeing Pacman
+                        // Check if from this new position, we can see any player
+                        for (let player of players) {
+                            const playerTileX = Math.floor(player.pixelX / this.tileSize);
+                            const playerTileY = Math.floor(player.pixelY / this.tileSize);
+                            
+                            if (this.canSeeTarget(checkX, checkY, playerTileX, playerTileY)) {
+                                chosenDirection = direction;
+                                break;
+                            }
                         }
+                        if (chosenDirection) break;
                     }
                 }
                 
@@ -931,32 +1005,74 @@ class PacmanGame {
     
     checkCollisions() {
         this.ghosts.forEach(ghost => {
-            if (ghost.x === this.pacman.x && ghost.y === this.pacman.y) {
-                this.lives--;
-                this.updateLives();
+            // Check collision with player 1
+            if (this.player1.active && ghost.x === this.player1.x && ghost.y === this.player1.y) {
+                this.player1.lives--;
                 this.playDeathSound();
-                this.resetPositions();
                 
-                if (this.lives <= 0) {
-                    this.stopBackgroundMusic();
-                    this.playGameOverSound();
-                    setTimeout(() => {
-                        alert('Game Over! Final Score: ' + this.score);
-                        this.restartGame();
-                    }, 600);
+                if (this.player1.lives <= 0) {
+                    this.player1.active = false;
+                    if (!this.firstPlayerEliminated) {
+                        this.firstPlayerEliminated = true;
+                        this.player1.score = Math.max(0, this.player1.score - 1000); // Deduct 1000 points from first eliminated player
+                    }
+                } else {
+                    this.resetPlayerPosition(this.player1);
                 }
+                this.updateScore();
+            }
+            
+            // Check collision with player 2
+            if (this.player2.active && ghost.x === this.player2.x && ghost.y === this.player2.y) {
+                this.player2.lives--;
+                this.playDeathSound();
+                
+                if (this.player2.lives <= 0) {
+                    this.player2.active = false;
+                    if (!this.firstPlayerEliminated) {
+                        this.firstPlayerEliminated = true;
+                        this.player2.score = Math.max(0, this.player2.score - 1000); // Deduct 1000 points from first eliminated player
+                    }
+                } else {
+                    this.resetPlayerPosition(this.player2);
+                }
+                this.updateScore();
             }
         });
+        
+        // Check if game should end
+        if (!this.player1.active && !this.player2.active && !this.gameEnding) {
+            this.gameEnding = true; // Prevent multiple end game calls
+            this.stopBackgroundMusic();
+            this.playGameOverSound();
+            setTimeout(() => {
+                this.endGame();
+            }, 600);
+        }
+    }
+    
+    resetPlayerPosition(player) {
+        if (player === this.player1) {
+            player.x = 1;
+            player.y = 1;
+            player.pixelX = 1 * this.tileSize;
+            player.pixelY = 1 * this.tileSize;
+            player.direction = 'right';
+            player.nextDirection = 'right';
+        } else {
+            player.x = this.cols - 2;
+            player.y = 1;
+            player.pixelX = (this.cols - 2) * this.tileSize;
+            player.pixelY = 1 * this.tileSize;
+            player.direction = 'left';
+            player.nextDirection = 'left';
+        }
+        player.moving = false;
     }
     
     resetPositions() {
-        this.pacman.x = 1;
-        this.pacman.y = 1;
-        this.pacman.pixelX = 1 * this.tileSize;
-        this.pacman.pixelY = 1 * this.tileSize;
-        this.pacman.direction = 'right';
-        this.pacman.nextDirection = 'right';
-        this.pacman.moving = false;
+        this.resetPlayerPosition(this.player1);
+        this.resetPlayerPosition(this.player2);
         
         this.ghosts = [
             { x: 19, y: 12, pixelX: 19 * this.tileSize, pixelY: 12 * this.tileSize, direction: 'up', color: 'red', moving: false, speed: 1.5, lastDirection: null, directionCooldown: 0, patrolTarget: null, searchMode: false },
@@ -967,14 +1083,36 @@ class PacmanGame {
     }
     
     checkWin() {
-        if (this.dots.every(dot => dot.collected)) {
+        if (this.dots.every(dot => dot.collected) && !this.gameEnding) {
+            this.gameEnding = true; // Prevent multiple end game calls
             this.stopBackgroundMusic();
             this.playWinSound();
             setTimeout(() => {
-                alert('You Win! Final Score: ' + this.score);
-                this.restartGame();
+                this.endGame();
             }, 600);
         }
+    }
+    
+    endGame() {
+        if (!this.gameRunning) return; // Prevent multiple calls
+        
+        this.gameRunning = false; // Stop the game loop
+        
+        const p1Score = this.player1.score;
+        const p2Score = this.player2.score;
+        
+        let message = `Game Over!\n\nPlayer 1 (Yellow): ${p1Score}\nPlayer 2 (Red): ${p2Score}\n\n`;
+        
+        if (p1Score > p2Score) {
+            message += 'Player 1 Wins!';
+        } else if (p2Score > p1Score) {
+            message += 'Player 2 Wins!';
+        } else {
+            message += "It's a Tie!";
+        }
+        
+        alert(message);
+        this.restartGame();
     }
     
     restartGame() {
@@ -982,10 +1120,21 @@ class PacmanGame {
         this.maze = this.generateMaze();
         this.dots = [];
         this.initializeDots();
-        this.score = 0;
-        this.lives = 3;
+        
+        // Reset both players
+        this.player1.score = 0;
+        this.player1.lives = 3;
+        this.player1.active = true;
+        
+        this.player2.score = 0;
+        this.player2.lives = 3;
+        this.player2.active = true;
+        
+        this.firstPlayerEliminated = false; // Reset elimination flag
+        this.gameEnding = false; // Reset game ending flag
+        this.gameRunning = true; // Restart the game loop
+        
         this.updateScore();
-        this.updateLives();
         this.resetPositions();
         this.startBackgroundMusic();
     }
@@ -995,8 +1144,9 @@ class PacmanGame {
         
         this.renderMaze();
         this.renderDots();
-        this.renderPacman();
+        this.renderPlayers();
         this.renderGhosts();
+        this.renderPlayerLabels();
     }
     
     renderMaze() {
@@ -1027,19 +1177,21 @@ class PacmanGame {
         });
     }
     
-    renderPacman() {
-        this.ctx.fillStyle = '#ff0';
+    renderPlayer(player) {
+        if (!player.active) return;
+        
+        this.ctx.fillStyle = player.color;
         this.ctx.beginPath();
         
-        const centerX = this.pacman.pixelX + this.tileSize / 2;
-        const centerY = this.pacman.pixelY + this.tileSize / 2;
+        const centerX = player.pixelX + this.tileSize / 2;
+        const centerY = player.pixelY + this.tileSize / 2;
         const radius = this.tileSize / 2 - 2;
         
-        if (this.pacman.mouthOpen) {
+        if (player.mouthOpen) {
             let startAngle = 0;
             let endAngle = 2 * Math.PI;
             
-            switch(this.pacman.direction) {
+            switch(player.direction) {
                 case 'right':
                     startAngle = 0.2 * Math.PI;
                     endAngle = 1.8 * Math.PI;
@@ -1065,6 +1217,32 @@ class PacmanGame {
         }
         
         this.ctx.fill();
+    }
+    
+    renderPlayers() {
+        this.renderPlayer(this.player1);
+        this.renderPlayer(this.player2);
+    }
+    
+    renderPlayerLabels() {
+        this.ctx.font = '12px Arial';
+        this.ctx.textAlign = 'center';
+        
+        // Player 1 label
+        if (this.player1.active) {
+            this.ctx.fillStyle = this.player1.color;
+            const p1X = this.player1.pixelX + this.tileSize / 2;
+            const p1Y = this.player1.pixelY - 5;
+            this.ctx.fillText('P1', p1X, p1Y);
+        }
+        
+        // Player 2 label
+        if (this.player2.active) {
+            this.ctx.fillStyle = this.player2.color;
+            const p2X = this.player2.pixelX + this.tileSize / 2;
+            const p2Y = this.player2.pixelY - 5;
+            this.ctx.fillText('P2', p2X, p2Y);
+        }
     }
     
     renderGhosts() {
@@ -1096,14 +1274,15 @@ class PacmanGame {
     }
     
     updateScore() {
-        document.getElementById('score').textContent = this.score;
-    }
-    
-    updateLives() {
-        document.getElementById('lives').textContent = this.lives;
+        document.getElementById('player1Score').textContent = this.player1.score;
+        document.getElementById('player1Lives').textContent = this.player1.lives;
+        document.getElementById('player2Score').textContent = this.player2.score;
+        document.getElementById('player2Lives').textContent = this.player2.lives;
     }
     
     gameLoop() {
+        if (!this.gameRunning) return; // Stop the loop if game is not running
+        
         this.updatePacman();
         this.updateGhosts();
         this.checkCollisions();
