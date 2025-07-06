@@ -26,7 +26,9 @@ class PacmanGame {
             lives: 3,
             color: '#ff0',
             name: 'Player 1',
-            active: true
+            active: true,
+            powerMode: false,
+            powerModeTimer: 0
         };
         
         this.player2 = {
@@ -44,7 +46,9 @@ class PacmanGame {
             lives: 3,
             color: '#f00',
             name: 'Player 2',
-            active: true
+            active: true,
+            powerMode: false,
+            powerModeTimer: 0
         };
         
         this.ghosts = [
@@ -61,6 +65,7 @@ class PacmanGame {
         this.setupControls();
         this.setupAudio();
         this.setupStartButton();
+        this.startMenuMusic();
         // Game will start when start button is pressed
     }
     
@@ -390,11 +395,31 @@ class PacmanGame {
     }
     
     initializeDots() {
+        // First, create all regular dots
+        const allDotPositions = [];
         for (let row = 0; row < this.rows; row++) {
             for (let col = 0; col < this.cols; col++) {
                 if (this.maze[row] && this.maze[row][col] === 0) {
-                    this.dots.push({ x: col, y: row, collected: false });
+                    allDotPositions.push({ x: col, y: row });
+                    this.dots.push({ 
+                        x: col, 
+                        y: row, 
+                        collected: false, 
+                        isPowerUp: false 
+                    });
                 }
+            }
+        }
+        
+        // Now randomly select exactly 3 dots to be power-ups
+        const powerUpCount = Math.min(3, allDotPositions.length); // Ensure we don't exceed available dots
+        const selectedIndices = [];
+        
+        while (selectedIndices.length < powerUpCount) {
+            const randomIndex = Math.floor(Math.random() * this.dots.length);
+            if (!selectedIndices.includes(randomIndex)) {
+                selectedIndices.push(randomIndex);
+                this.dots[randomIndex].isPowerUp = true;
             }
         }
     }
@@ -469,6 +494,7 @@ class PacmanGame {
                 startMenu.style.display = 'none';
                 gameContainer.style.display = 'block';
                 gameContainer.classList.add('fade-in');
+                this.stopMenuMusic();
                 this.gameRunning = true;
                 this.startBackgroundMusic();
                 this.gameLoop();
@@ -501,6 +527,7 @@ class PacmanGame {
         
         // Background music variables
         this.backgroundMusicPlaying = false;
+        this.menuMusicPlaying = false;
         this.musicInterval = null;
     }
     
@@ -529,6 +556,14 @@ class PacmanGame {
         setTimeout(() => {
             this.playSound(659, 0.08, 'sine', 0.03); // E note
         }, 40);
+    }
+    
+    playPowerUpSound() {
+        // Triumphant ascending sound for power-up
+        this.playSound(523, 0.1, 'sine', 0.06); // C
+        setTimeout(() => this.playSound(659, 0.1, 'sine', 0.06), 50); // E
+        setTimeout(() => this.playSound(784, 0.1, 'sine', 0.06), 100); // G
+        setTimeout(() => this.playSound(1047, 0.15, 'sine', 0.08), 150); // C high
     }
     
     playDeathSound() {
@@ -629,6 +664,55 @@ class PacmanGame {
             clearInterval(this.musicInterval);
             this.musicInterval = null;
         }
+    }
+    
+    startMenuMusic() {
+        if (!this.audioContext || this.menuMusicPlaying) return;
+        
+        this.menuMusicPlaying = true;
+        
+        // Chill ambient menu melody - slower and more relaxed
+        const chillMelody = [
+            { note: 220, duration: 1.0 },  // A (low, long)
+            { note: 247, duration: 0.5 },  // B
+            { note: 262, duration: 1.5 },  // C (extra long)
+            { note: 0, duration: 0.5 },    // Rest
+            
+            { note: 294, duration: 1.0 },  // D
+            { note: 330, duration: 0.5 },  // E
+            { note: 262, duration: 1.5 },  // C (back to home)
+            { note: 0, duration: 0.5 },    // Rest
+            
+            { note: 196, duration: 1.0 },  // G (low)
+            { note: 220, duration: 0.5 },  // A
+            { note: 247, duration: 1.0 },  // B
+            { note: 262, duration: 2.0 },  // C (very long, peaceful)
+            { note: 0, duration: 1.0 },    // Long rest
+        ];
+        
+        let noteIndex = 0;
+        
+        const playNextChillNote = () => {
+            if (!this.menuMusicPlaying) return;
+            
+            const currentNote = chillMelody[noteIndex];
+            
+            if (currentNote.note > 0) {
+                // Use soft sine wave for chill effect
+                this.playSound(currentNote.note, currentNote.duration, 'sine', 0.008);
+            }
+            
+            noteIndex = (noteIndex + 1) % chillMelody.length;
+            
+            setTimeout(playNextChillNote, currentNote.duration * 1000);
+        };
+        
+        // Start playing the chill melody
+        playNextChillNote();
+    }
+    
+    stopMenuMusic() {
+        this.menuMusicPlaying = false;
     }
     
     canMove(x, y) {
@@ -753,6 +837,14 @@ class PacmanGame {
         player.mouthFrame = (player.mouthFrame + 1) % 10;
         player.mouthOpen = player.mouthFrame < 5;
         
+        // Update power mode timer
+        if (player.powerMode && player.powerModeTimer > 0) {
+            player.powerModeTimer--;
+            if (player.powerModeTimer <= 0) {
+                player.powerMode = false;
+            }
+        }
+        
         this.collectDot(player);
     }
     
@@ -765,9 +857,19 @@ class PacmanGame {
         const dot = this.dots.find(d => d.x === player.x && d.y === player.y && !d.collected);
         if (dot) {
             dot.collected = true;
-            player.score += 10;
+            
+            if (dot.isPowerUp) {
+                // Activate power mode for 5 seconds
+                player.powerMode = true;
+                player.powerModeTimer = 300; // 5 seconds at 60 FPS
+                player.score += 50; // Power-up dots are worth more
+                this.playPowerUpSound();
+            } else {
+                player.score += 10;
+                this.playDotSound();
+            }
+            
             this.updateScore();
-            this.playDotSound();
         }
     }
     
@@ -1038,36 +1140,48 @@ class PacmanGame {
         this.ghosts.forEach(ghost => {
             // Check collision with player 1
             if (this.player1.active && ghost.x === this.player1.x && ghost.y === this.player1.y) {
-                this.player1.lives--;
-                this.playDeathSound();
-                
-                if (this.player1.lives <= 0) {
-                    this.player1.active = false;
-                    if (!this.firstPlayerEliminated) {
-                        this.firstPlayerEliminated = true;
-                        this.player1.score = Math.max(0, this.player1.score - 1000); // Deduct 1000 points from first eliminated player
-                    }
+                if (this.player1.powerMode) {
+                    // Player can eat ghost
+                    this.eatGhost(ghost, this.player1);
                 } else {
-                    this.resetPlayerPosition(this.player1);
+                    // Normal collision - player gets hurt
+                    this.player1.lives--;
+                    this.playDeathSound();
+                    
+                    if (this.player1.lives <= 0) {
+                        this.player1.active = false;
+                        if (!this.firstPlayerEliminated) {
+                            this.firstPlayerEliminated = true;
+                            this.player1.score = Math.max(0, this.player1.score - 1000);
+                        }
+                    } else {
+                        this.resetPlayerPosition(this.player1);
+                    }
+                    this.updateScore();
                 }
-                this.updateScore();
             }
             
             // Check collision with player 2
             if (this.player2.active && ghost.x === this.player2.x && ghost.y === this.player2.y) {
-                this.player2.lives--;
-                this.playDeathSound();
-                
-                if (this.player2.lives <= 0) {
-                    this.player2.active = false;
-                    if (!this.firstPlayerEliminated) {
-                        this.firstPlayerEliminated = true;
-                        this.player2.score = Math.max(0, this.player2.score - 1000); // Deduct 1000 points from first eliminated player
-                    }
+                if (this.player2.powerMode) {
+                    // Player can eat ghost
+                    this.eatGhost(ghost, this.player2);
                 } else {
-                    this.resetPlayerPosition(this.player2);
+                    // Normal collision - player gets hurt
+                    this.player2.lives--;
+                    this.playDeathSound();
+                    
+                    if (this.player2.lives <= 0) {
+                        this.player2.active = false;
+                        if (!this.firstPlayerEliminated) {
+                            this.firstPlayerEliminated = true;
+                            this.player2.score = Math.max(0, this.player2.score - 1000);
+                        }
+                    } else {
+                        this.resetPlayerPosition(this.player2);
+                    }
+                    this.updateScore();
                 }
-                this.updateScore();
             }
         });
         
@@ -1080,6 +1194,39 @@ class PacmanGame {
                 this.endGame();
             }, 600);
         }
+    }
+    
+    eatGhost(ghost, player) {
+        // Award 300 points for eating a ghost
+        player.score += 300;
+        this.updateScore();
+        
+        // Play eating sound
+        this.playGhostEatSound();
+        
+        // Respawn ghost at center
+        this.respawnGhost(ghost);
+    }
+    
+    playGhostEatSound() {
+        // Satisfying descending tone for eating ghost
+        this.playSound(800, 0.1, 'square', 0.08);
+        setTimeout(() => this.playSound(600, 0.1, 'square', 0.06), 80);
+        setTimeout(() => this.playSound(400, 0.15, 'square', 0.04), 160);
+    }
+    
+    respawnGhost(ghost) {
+        // Move ghost to center of map
+        const centerX = Math.floor(this.cols / 2);
+        const centerY = Math.floor(this.rows / 2);
+        
+        ghost.x = centerX;
+        ghost.y = centerY;
+        ghost.pixelX = centerX * this.tileSize;
+        ghost.pixelY = centerY * this.tileSize;
+        ghost.moving = false;
+        ghost.direction = 'up';
+        ghost.directionCooldown = 30; // Brief pause before moving again
     }
     
     resetPlayerPosition(player) {
@@ -1156,10 +1303,14 @@ class PacmanGame {
         this.player1.score = 0;
         this.player1.lives = 3;
         this.player1.active = true;
+        this.player1.powerMode = false;
+        this.player1.powerModeTimer = 0;
         
         this.player2.score = 0;
         this.player2.lives = 3;
         this.player2.active = true;
+        this.player2.powerMode = false;
+        this.player2.powerModeTimer = 0;
         
         this.firstPlayerEliminated = false; // Reset elimination flag
         this.gameEnding = false; // Reset game ending flag
@@ -1192,18 +1343,33 @@ class PacmanGame {
     }
     
     renderDots() {
-        this.ctx.fillStyle = '#fff';
         this.dots.forEach(dot => {
             if (!dot.collected) {
-                this.ctx.beginPath();
-                this.ctx.arc(
-                    dot.x * this.tileSize + this.tileSize / 2,
-                    dot.y * this.tileSize + this.tileSize / 2,
-                    2,
-                    0,
-                    2 * Math.PI
-                );
-                this.ctx.fill();
+                const centerX = dot.x * this.tileSize + this.tileSize / 2;
+                const centerY = dot.y * this.tileSize + this.tileSize / 2;
+                
+                if (dot.isPowerUp) {
+                    // Render power-up dots as larger, pulsing circles
+                    const pulseSize = 6 + Math.sin(Date.now() / 200) * 2;
+                    this.ctx.fillStyle = '#ff0';
+                    this.ctx.beginPath();
+                    this.ctx.arc(centerX, centerY, pulseSize, 0, 2 * Math.PI);
+                    this.ctx.fill();
+                    
+                    // Add glow effect
+                    this.ctx.shadowColor = '#ff0';
+                    this.ctx.shadowBlur = 10;
+                    this.ctx.beginPath();
+                    this.ctx.arc(centerX, centerY, pulseSize, 0, 2 * Math.PI);
+                    this.ctx.fill();
+                    this.ctx.shadowBlur = 0;
+                } else {
+                    // Regular dots
+                    this.ctx.fillStyle = '#fff';
+                    this.ctx.beginPath();
+                    this.ctx.arc(centerX, centerY, 2, 0, 2 * Math.PI);
+                    this.ctx.fill();
+                }
             }
         });
     }
@@ -1211,12 +1377,31 @@ class PacmanGame {
     renderPlayer(player) {
         if (!player.active) return;
         
-        this.ctx.fillStyle = player.color;
-        this.ctx.beginPath();
-        
         const centerX = player.pixelX + this.tileSize / 2;
         const centerY = player.pixelY + this.tileSize / 2;
         const radius = this.tileSize / 2 - 2;
+        
+        // Determine player color (rainbow if in power mode)
+        let playerColor = player.color;
+        if (player.powerMode) {
+            // Rainbow flashing effect
+            const time = Date.now() / 100;
+            const hue = (time * 60) % 360; // Cycle through hue every 6 seconds
+            playerColor = `hsl(${hue}, 100%, 50%)`;
+            
+            // Glowing aura around player
+            const glowRadius = radius + 5 + Math.sin(time) * 3;
+            this.ctx.shadowColor = playerColor;
+            this.ctx.shadowBlur = 15;
+            this.ctx.fillStyle = playerColor;
+            this.ctx.beginPath();
+            this.ctx.arc(centerX, centerY, glowRadius, 0, 2 * Math.PI);
+            this.ctx.fill();
+            this.ctx.shadowBlur = 0;
+        }
+        
+        this.ctx.fillStyle = playerColor;
+        this.ctx.beginPath();
         
         if (player.mouthOpen) {
             let startAngle = 0;
