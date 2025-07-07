@@ -67,6 +67,9 @@ class PacmanGame {
         this.dots = [];
         this.firstPlayerEliminated = false; // Track if first player has been eliminated
         this.gameEnding = false; // Track if game is already ending
+        this.showingGameOver = false; // Track if showing game over splash
+        this.gameOverStartTime = 0; // For animations
+        this.gameOverMessage = ''; // Store the game over message
         this.initializeDots();
         this.setupControls();
         this.setupAudio();
@@ -522,6 +525,14 @@ class PacmanGame {
                         }
                     }
                     break;
+            }
+        });
+        
+        // Add listener for game over restart
+        document.addEventListener('keydown', (e) => {
+            if (this.showingGameOver) {
+                e.preventDefault();
+                this.restartGame();
             }
         });
     }
@@ -1453,21 +1464,187 @@ class PacmanGame {
         const p1Score = this.player1.score;
         const p2Score = this.player2.score;
         
-        let message = `Game Over!\n\nPlayer 1 (Yellow): ${p1Score}\nPlayer 2 (Red): ${p2Score}\n\n`;
+        // Create fancy game over message
+        this.gameOverMessage = {
+            title: 'GAME OVER',
+            p1Score: p1Score,
+            p2Score: p2Score,
+            winner: p1Score > p2Score ? 'Player 1 Wins!' : 
+                    p2Score > p1Score ? 'Player 2 Wins!' : 
+                    "It's a Tie!"
+        };
         
-        if (p1Score > p2Score) {
-            message += 'Player 1 Wins!';
-        } else if (p2Score > p1Score) {
-            message += 'Player 2 Wins!';
-        } else {
-            message += "It's a Tie!";
+        // Show splash screen instead of alert
+        this.showingGameOver = true;
+        this.gameOverStartTime = Date.now();
+        
+        console.log('Game over! Showing splash screen...', this.gameOverMessage);
+        
+        // Play enhanced game over sound
+        this.playGameOverSplashSound();
+        
+        // Auto-restart after 5 seconds, or wait for user input
+        setTimeout(() => {
+            if (this.showingGameOver) {
+                this.restartGame();
+            }
+        }, 5000);
+    }
+    
+    renderGameOverSplash() {
+        if (!this.showingGameOver) return;
+        
+        const time = (Date.now() - this.gameOverStartTime) / 1000;
+        
+        // Save context
+        this.ctx.save();
+        
+        // Dark overlay with pulsing effect
+        const overlayAlpha = 0.8 + Math.sin(time * 3) * 0.1;
+        this.ctx.fillStyle = `rgba(0, 0, 0, ${overlayAlpha})`;
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        // Center coordinates
+        const centerX = this.canvas.width / 2;
+        const centerY = this.canvas.height / 2;
+        
+        // Main title with dramatic effect
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        
+        // Title glow effect
+        const titleScale = 1 + Math.sin(time * 2) * 0.1;
+        this.ctx.font = `bold ${80 * titleScale}px Impact, Arial`;
+        
+        // Red glow
+        this.ctx.shadowColor = '#ff0000';
+        this.ctx.shadowBlur = 30;
+        this.ctx.fillStyle = '#ff0000';
+        this.ctx.fillText(this.gameOverMessage.title, centerX, centerY - 100);
+        
+        // White outline
+        this.ctx.shadowBlur = 0;
+        this.ctx.strokeStyle = '#ffffff';
+        this.ctx.lineWidth = 4;
+        this.ctx.strokeText(this.gameOverMessage.title, centerX, centerY - 100);
+        
+        // Scores section
+        this.ctx.font = 'bold 36px Arial';
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.shadowBlur = 15;
+        this.ctx.shadowColor = '#000000';
+        
+        // Player 1 score
+        this.ctx.fillStyle = '#ffff00'; // Yellow
+        this.ctx.fillText(`Player 1: ${this.gameOverMessage.p1Score}`, centerX - 150, centerY + 20);
+        
+        // Player 2 score  
+        this.ctx.fillStyle = '#ff0000'; // Red
+        this.ctx.fillText(`Player 2: ${this.gameOverMessage.p2Score}`, centerX + 150, centerY + 20);
+        
+        // Winner announcement with rainbow effect
+        this.ctx.font = 'bold 48px Arial';
+        const hue = (time * 60) % 360;
+        this.ctx.fillStyle = `hsl(${hue}, 100%, 50%)`;
+        this.ctx.shadowColor = `hsl(${hue}, 100%, 30%)`;
+        this.ctx.shadowBlur = 20;
+        this.ctx.fillText(this.gameOverMessage.winner, centerX, centerY + 80);
+        
+        // Restart instructions
+        this.ctx.font = '24px Arial';
+        this.ctx.fillStyle = '#cccccc';
+        this.ctx.shadowBlur = 5;
+        this.ctx.fillText('Auto-restart in ' + Math.max(0, Math.ceil(5 - time)) + ' seconds', centerX, centerY + 140);
+        this.ctx.fillText('Press any key to restart now', centerX, centerY + 170);
+        
+        // Particle effects
+        this.renderGameOverParticles(time);
+        
+        // Restore context
+        this.ctx.restore();
+    }
+    
+    renderGameOverParticles(time) {
+        const centerX = this.canvas.width / 2;
+        const centerY = this.canvas.height / 2;
+        
+        // Create floating particles
+        for (let i = 0; i < 20; i++) {
+            const angle = (time + i) * 0.5;
+            const radius = 200 + Math.sin(time + i) * 50;
+            const x = centerX + Math.cos(angle) * radius;
+            const y = centerY + Math.sin(angle) * radius * 0.5;
+            
+            const size = 3 + Math.sin(time * 2 + i) * 2;
+            const alpha = 0.5 + Math.sin(time * 3 + i) * 0.3;
+            
+            this.ctx.fillStyle = `rgba(255, 255, 0, ${alpha})`;
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, size, 0, 2 * Math.PI);
+            this.ctx.fill();
+        }
+    }
+    
+    playGameOverSplashSound() {
+        // Enhanced dramatic game over sound
+        console.log('Playing game over sound...', this.audioContext);
+        if (!this.audioContext) {
+            console.log('No audio context available');
+            return;
         }
         
-        alert(message);
-        this.restartGame();
+        const now = this.audioContext.currentTime;
+        
+        // Deep dramatic chord
+        const frequencies = [80, 100, 120, 150]; // Low dramatic notes
+        
+        frequencies.forEach((freq, index) => {
+            const oscillator = this.audioContext.createOscillator();
+            const gainNode = this.audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(this.audioContext.destination);
+            
+            oscillator.frequency.setValueAtTime(freq, now);
+            oscillator.type = 'sawtooth';
+            
+            // Dramatic volume envelope
+            gainNode.gain.setValueAtTime(0, now);
+            gainNode.gain.linearRampToValueAtTime(0.2, now + 0.1);
+            gainNode.gain.exponentialRampToValueAtTime(0.05, now + 1.5);
+            gainNode.gain.linearRampToValueAtTime(0, now + 2);
+            
+            oscillator.start(now + index * 0.1);
+            oscillator.stop(now + 2);
+        });
+        
+        // Add some high frequency drama
+        setTimeout(() => {
+            const oscillator = this.audioContext.createOscillator();
+            const gainNode = this.audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(this.audioContext.destination);
+            
+            oscillator.frequency.setValueAtTime(800, now + 0.5);
+            oscillator.frequency.exponentialRampToValueAtTime(200, now + 1.5);
+            oscillator.type = 'square';
+            
+            gainNode.gain.setValueAtTime(0, now + 0.5);
+            gainNode.gain.linearRampToValueAtTime(0.1, now + 0.6);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, now + 1.5);
+            
+            oscillator.start(now + 0.5);
+            oscillator.stop(now + 1.5);
+        }, 500);
     }
     
     restartGame() {
+        // Clear game over state
+        this.showingGameOver = false;
+        this.gameOverStartTime = 0;
+        this.gameOverMessage = '';
+        
         this.stopBackgroundMusic();
         this.maze = this.generateMaze();
         this.dots = [];
@@ -1507,6 +1684,12 @@ class PacmanGame {
         this.renderPlayers();
         this.renderGhosts();
         this.renderPlayerLabels();
+        
+        // Render game over splash screen on top of everything
+        if (this.showingGameOver) {
+            console.log('Rendering game over splash screen...');
+            this.renderGameOverSplash();
+        }
     }
     
     renderMaze() {
@@ -1805,12 +1988,17 @@ class PacmanGame {
     }
     
     gameLoop() {
-        if (!this.gameRunning) return; // Stop the loop if game is not running
+        if (!this.gameRunning && !this.showingGameOver) return; // Stop the loop if game is not running and not showing game over
         
-        this.updatePacman();
-        this.updateGhosts();
-        this.checkCollisions();
-        this.checkWin();
+        // Only update game logic if game is actually running
+        if (this.gameRunning) {
+            this.updatePacman();
+            this.updateGhosts();
+            this.checkCollisions();
+            this.checkWin();
+        }
+        
+        // Always render (to show game over screen)
         this.render();
         
         setTimeout(() => this.gameLoop(), 16); // ~60 FPS
