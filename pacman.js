@@ -5,7 +5,7 @@ class PacmanGame {
         this.score = 0;
         this.lives = 3;
         this.gameRunning = false; // Don't start game immediately
-        this.tileSize = 20;
+        this.tileSize = 46; // 15% bigger than 40px
         this.cols = this.canvas.width / this.tileSize;
         this.rows = this.canvas.height / this.tileSize;
         
@@ -18,17 +18,20 @@ class PacmanGame {
             pixelY: 1 * this.tileSize,
             direction: 'right',
             nextDirection: 'right',
+            bufferedDirection: null,
             mouthOpen: true,
             mouthFrame: 0,
             moving: false,
-            speed: 2,
+            speed: 4.6, // Proportional to 15% bigger tiles
             score: 0,
             lives: 3,
             color: '#ff0',
             name: 'Player 1',
             active: true,
             powerMode: false,
-            powerModeTimer: 0
+            powerModeTimer: 0,
+            superPowerMode: false,
+            superPowerModeTimer: 0
         };
         
         this.player2 = {
@@ -38,24 +41,27 @@ class PacmanGame {
             pixelY: 1 * this.tileSize,
             direction: 'left',
             nextDirection: 'left',
+            bufferedDirection: null,
             mouthOpen: true,
             mouthFrame: 0,
             moving: false,
-            speed: 2,
+            speed: 4.6, // Proportional to 15% bigger tiles
             score: 0,
             lives: 3,
             color: '#f00',
             name: 'Player 2',
             active: true,
             powerMode: false,
-            powerModeTimer: 0
+            powerModeTimer: 0,
+            superPowerMode: false,
+            superPowerModeTimer: 0
         };
         
         this.ghosts = [
-            { x: 19, y: 12, pixelX: 19 * this.tileSize, pixelY: 12 * this.tileSize, direction: 'up', color: 'red', moving: false, speed: 1.5, lastDirection: null, directionCooldown: 0, patrolTarget: null, searchMode: false },
-            { x: 18, y: 12, pixelX: 18 * this.tileSize, pixelY: 12 * this.tileSize, direction: 'up', color: 'pink', moving: false, speed: 1.5, lastDirection: null, directionCooldown: 0, patrolTarget: null, searchMode: false },
-            { x: 20, y: 12, pixelX: 20 * this.tileSize, pixelY: 12 * this.tileSize, direction: 'up', color: 'cyan', moving: false, speed: 1.5, lastDirection: null, directionCooldown: 0, patrolTarget: null, searchMode: false },
-            { x: 21, y: 12, pixelX: 21 * this.tileSize, pixelY: 12 * this.tileSize, direction: 'up', color: 'orange', moving: false, speed: 1.5, lastDirection: null, directionCooldown: 0, patrolTarget: null, searchMode: false }
+            { x: 9, y: 7, pixelX: 9 * this.tileSize, pixelY: 7 * this.tileSize, direction: 'up', color: 'red', moving: false, speed: 3.45, lastDirection: null, directionCooldown: 0, patrolTarget: null, searchMode: false },
+            { x: 8, y: 7, pixelX: 8 * this.tileSize, pixelY: 7 * this.tileSize, direction: 'up', color: 'pink', moving: false, speed: 3.45, lastDirection: null, directionCooldown: 0, patrolTarget: null, searchMode: false },
+            { x: 10, y: 7, pixelX: 10 * this.tileSize, pixelY: 7 * this.tileSize, direction: 'up', color: 'cyan', moving: false, speed: 3.45, lastDirection: null, directionCooldown: 0, patrolTarget: null, searchMode: false },
+            { x: 11, y: 7, pixelX: 11 * this.tileSize, pixelY: 7 * this.tileSize, direction: 'up', color: 'orange', moving: false, speed: 3.45, lastDirection: null, directionCooldown: 0, patrolTarget: null, searchMode: false }
         ];
         
         this.dots = [];
@@ -405,7 +411,8 @@ class PacmanGame {
                         x: col, 
                         y: row, 
                         collected: false, 
-                        isPowerUp: false 
+                        isPowerUp: false,
+                        isSuperPowerUp: false
                     });
                 }
             }
@@ -422,6 +429,15 @@ class PacmanGame {
                 this.dots[randomIndex].isPowerUp = true;
             }
         }
+        
+        // Select 1 dot to be a super power-up (excluding existing power-ups)
+        const availableForSuperPowerUp = this.dots.filter((dot, index) => !selectedIndices.includes(index));
+        if (availableForSuperPowerUp.length > 0) {
+            const randomSuperPowerUpIndex = Math.floor(Math.random() * availableForSuperPowerUp.length);
+            const superPowerUpDot = availableForSuperPowerUp[randomSuperPowerUpIndex];
+            const superPowerUpGlobalIndex = this.dots.indexOf(superPowerUpDot);
+            this.dots[superPowerUpGlobalIndex].isSuperPowerUp = true;
+        }
     }
     
     setupControls() {
@@ -431,40 +447,80 @@ class PacmanGame {
                 case 'w':
                 case 'W':
                     e.preventDefault();
-                    if (this.player1.active) this.player1.nextDirection = 'up';
+                    if (this.player1.active) {
+                        this.player1.bufferedDirection = 'up';
+                        if (!this.player1.moving) {
+                            this.player1.nextDirection = 'up';
+                        }
+                    }
                     break;
                 case 's':
                 case 'S':
                     e.preventDefault();
-                    if (this.player1.active) this.player1.nextDirection = 'down';
+                    if (this.player1.active) {
+                        this.player1.bufferedDirection = 'down';
+                        if (!this.player1.moving) {
+                            this.player1.nextDirection = 'down';
+                        }
+                    }
                     break;
                 case 'a':
                 case 'A':
                     e.preventDefault();
-                    if (this.player1.active) this.player1.nextDirection = 'left';
+                    if (this.player1.active) {
+                        this.player1.bufferedDirection = 'left';
+                        if (!this.player1.moving) {
+                            this.player1.nextDirection = 'left';
+                        }
+                    }
                     break;
                 case 'd':
                 case 'D':
                     e.preventDefault();
-                    if (this.player1.active) this.player1.nextDirection = 'right';
+                    if (this.player1.active) {
+                        this.player1.bufferedDirection = 'right';
+                        if (!this.player1.moving) {
+                            this.player1.nextDirection = 'right';
+                        }
+                    }
                     break;
                     
                 // Player 2 controls (Arrow keys)
                 case 'ArrowUp':
                     e.preventDefault();
-                    if (this.player2.active) this.player2.nextDirection = 'up';
+                    if (this.player2.active) {
+                        this.player2.bufferedDirection = 'up';
+                        if (!this.player2.moving) {
+                            this.player2.nextDirection = 'up';
+                        }
+                    }
                     break;
                 case 'ArrowDown':
                     e.preventDefault();
-                    if (this.player2.active) this.player2.nextDirection = 'down';
+                    if (this.player2.active) {
+                        this.player2.bufferedDirection = 'down';
+                        if (!this.player2.moving) {
+                            this.player2.nextDirection = 'down';
+                        }
+                    }
                     break;
                 case 'ArrowLeft':
                     e.preventDefault();
-                    if (this.player2.active) this.player2.nextDirection = 'left';
+                    if (this.player2.active) {
+                        this.player2.bufferedDirection = 'left';
+                        if (!this.player2.moving) {
+                            this.player2.nextDirection = 'left';
+                        }
+                    }
                     break;
                 case 'ArrowRight':
                     e.preventDefault();
-                    if (this.player2.active) this.player2.nextDirection = 'right';
+                    if (this.player2.active) {
+                        this.player2.bufferedDirection = 'right';
+                        if (!this.player2.moving) {
+                            this.player2.nextDirection = 'right';
+                        }
+                    }
                     break;
             }
         });
@@ -472,32 +528,68 @@ class PacmanGame {
     
     setupStartButton() {
         const startButton = document.getElementById('startButton');
-        startButton.addEventListener('click', () => {
+        if (!startButton) {
+            console.error('Start button not found!');
+            return;
+        }
+        
+        console.log('Setting up start button...', startButton);
+        
+        // Add multiple event types for better compatibility
+        const handleStart = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('Start button activated!');
+            
+            // Remove event listeners to prevent multiple clicks
+            startButton.removeEventListener('click', handleStart);
+            startButton.removeEventListener('touchstart', handleStart);
+            
             this.startGame();
-        });
+        };
+        
+        startButton.addEventListener('click', handleStart);
+        startButton.addEventListener('touchstart', handleStart); // For mobile
+        
+        // Add visual feedback
+        startButton.style.cursor = 'pointer';
+        startButton.style.userSelect = 'none'; // Prevent text selection
+        
+        console.log('Start button setup complete');
     }
     
     startGame() {
+        console.log('Starting game...');
         const startButton = document.getElementById('startButton');
         const startMenu = document.getElementById('startMenu');
         const gameContainer = document.getElementById('gameContainer');
+        
+        if (!startButton || !startMenu || !gameContainer) {
+            console.error('Required elements not found:', {startButton, startMenu, gameContainer});
+            return;
+        }
         
         // Start the float up animation
         startButton.classList.add('float-up');
         
         // After the button animation, fade out the menu and show the game
         setTimeout(() => {
+            console.log('Starting fade out animation...');
             startMenu.classList.add('fade-out');
             
             // Show game container and start game after fade out
             setTimeout(() => {
+                console.log('Showing game container...');
                 startMenu.style.display = 'none';
                 gameContainer.style.display = 'block';
                 gameContainer.classList.add('fade-in');
+                
+                console.log('Starting game systems...');
                 this.stopMenuMusic();
                 this.gameRunning = true;
                 this.startBackgroundMusic();
                 this.gameLoop();
+                console.log('Game started successfully!');
             }, 1000); // Wait for fade out animation
         }, 500); // Wait for button float animation
     }
@@ -715,10 +807,16 @@ class PacmanGame {
         this.menuMusicPlaying = false;
     }
     
-    canMove(x, y) {
+    canMove(x, y, player = null) {
         if (x < 0 || x >= this.cols || y < 0 || y >= this.rows) {
             return false;
         }
+        
+        // If player is in super power mode, allow movement through walls
+        if (player && player.superPowerMode) {
+            return true;
+        }
+        
         return this.maze[y][x] === 0;
     }
     
@@ -771,36 +869,98 @@ class PacmanGame {
         
         // Handle direction changes when reaching tile centers
         if (!player.moving) {
-            let newX = player.x;
-            let newY = player.y;
-            
-            switch(player.nextDirection) {
-                case 'up':
-                    newY--;
-                    break;
-                case 'down':
-                    newY++;
-                    break;
-                case 'left':
-                    newX--;
-                    break;
-                case 'right':
-                    newX++;
-                    break;
+            // First, check if we have a buffered direction and if it's valid
+            if (player.bufferedDirection) {
+                let newX = player.x;
+                let newY = player.y;
+                
+                switch(player.bufferedDirection) {
+                    case 'up':
+                        newY--;
+                        break;
+                    case 'down':
+                        newY++;
+                        break;
+                    case 'left':
+                        newX--;
+                        break;
+                    case 'right':
+                        newX++;
+                        break;
+                }
+                
+                if (this.canMove(newX, newY, player)) {
+                    player.direction = player.bufferedDirection;
+                    player.nextDirection = player.bufferedDirection;
+                    player.bufferedDirection = null; // Clear the buffer
+                    player.moving = true;
+                    this.playMoveSound();
+                }
             }
             
-            if (this.canMove(newX, newY)) {
-                player.direction = player.nextDirection;
-                player.moving = true;
-                this.playMoveSound();
+            // If no buffered direction worked, try to continue in current direction
+            if (!player.moving) {
+                let newX = player.x;
+                let newY = player.y;
+                
+                switch(player.direction) {
+                    case 'up':
+                        newY--;
+                        break;
+                    case 'down':
+                        newY++;
+                        break;
+                    case 'left':
+                        newX--;
+                        break;
+                    case 'right':
+                        newX++;
+                        break;
+                }
+                
+                if (this.canMove(newX, newY, player)) {
+                    player.moving = true;
+                    this.playMoveSound();
+                } else {
+                    // If can't continue in current direction, try nextDirection as fallback
+                    newX = player.x;
+                    newY = player.y;
+                    
+                    switch(player.nextDirection) {
+                        case 'up':
+                            newY--;
+                            break;
+                        case 'down':
+                            newY++;
+                            break;
+                        case 'left':
+                            newX--;
+                            break;
+                        case 'right':
+                            newX++;
+                            break;
+                    }
+                    
+                    if (this.canMove(newX, newY, player)) {
+                        player.direction = player.nextDirection;
+                        player.moving = true;
+                        this.playMoveSound();
+                    }
+                }
             }
         }
         
         // Smooth movement between tiles
         if (player.moving) {
+            // Calculate effective speed with super power boost
+            let effectiveSpeed = player.speed;
+            if (player.superPowerMode) {
+                effectiveSpeed *= 1.25; // 25% speed boost
+            }
+            
             switch(player.direction) {
                 case 'up':
-                    player.pixelY -= player.speed;
+                    player.pixelY -= effectiveSpeed;
                     if (player.pixelY <= (player.y - 1) * this.tileSize) {
                         player.y--;
                         player.pixelY = player.y * this.tileSize;
@@ -808,7 +968,7 @@ class PacmanGame {
                     }
                     break;
                 case 'down':
-                    player.pixelY += player.speed;
+                    player.pixelY += effectiveSpeed;
                     if (player.pixelY >= (player.y + 1) * this.tileSize) {
                         player.y++;
                         player.pixelY = player.y * this.tileSize;
@@ -816,7 +976,7 @@ class PacmanGame {
                     }
                     break;
                 case 'left':
-                    player.pixelX -= player.speed;
+                    player.pixelX -= effectiveSpeed;
                     if (player.pixelX <= (player.x - 1) * this.tileSize) {
                         player.x--;
                         player.pixelX = player.x * this.tileSize;
@@ -824,7 +984,7 @@ class PacmanGame {
                     }
                     break;
                 case 'right':
-                    player.pixelX += player.speed;
+                    player.pixelX += effectiveSpeed;
                     if (player.pixelX >= (player.x + 1) * this.tileSize) {
                         player.x++;
                         player.pixelX = player.x * this.tileSize;
@@ -845,6 +1005,14 @@ class PacmanGame {
             }
         }
         
+        // Update super power mode timer
+        if (player.superPowerMode && player.superPowerModeTimer > 0) {
+            player.superPowerModeTimer--;
+            if (player.superPowerModeTimer <= 0) {
+                player.superPowerMode = false;
+            }
+        }
+        
         this.collectDot(player);
     }
     
@@ -858,7 +1026,13 @@ class PacmanGame {
         if (dot) {
             dot.collected = true;
             
-            if (dot.isPowerUp) {
+            if (dot.isSuperPowerUp) {
+                // Activate super power mode for 10 seconds
+                player.superPowerMode = true;
+                player.superPowerModeTimer = 600; // 10 seconds at 60 FPS
+                player.score += 100; // Super power-up dots are worth even more
+                this.playPowerUpSound();
+            } else if (dot.isPowerUp) {
                 // Activate power mode for 5 seconds
                 player.powerMode = true;
                 player.powerModeTimer = 300; // 5 seconds at 60 FPS
@@ -1140,7 +1314,7 @@ class PacmanGame {
         this.ghosts.forEach(ghost => {
             // Check collision with player 1
             if (this.player1.active && ghost.x === this.player1.x && ghost.y === this.player1.y) {
-                if (this.player1.powerMode) {
+                if (this.player1.powerMode || this.player1.superPowerMode) {
                     // Player can eat ghost
                     this.eatGhost(ghost, this.player1);
                 } else {
@@ -1163,7 +1337,7 @@ class PacmanGame {
             
             // Check collision with player 2
             if (this.player2.active && ghost.x === this.player2.x && ghost.y === this.player2.y) {
-                if (this.player2.powerMode) {
+                if (this.player2.powerMode || this.player2.superPowerMode) {
                     // Player can eat ghost
                     this.eatGhost(ghost, this.player2);
                 } else {
@@ -1253,10 +1427,10 @@ class PacmanGame {
         this.resetPlayerPosition(this.player2);
         
         this.ghosts = [
-            { x: 19, y: 12, pixelX: 19 * this.tileSize, pixelY: 12 * this.tileSize, direction: 'up', color: 'red', moving: false, speed: 1.5, lastDirection: null, directionCooldown: 0, patrolTarget: null, searchMode: false },
-            { x: 18, y: 12, pixelX: 18 * this.tileSize, pixelY: 12 * this.tileSize, direction: 'up', color: 'pink', moving: false, speed: 1.5, lastDirection: null, directionCooldown: 0, patrolTarget: null, searchMode: false },
-            { x: 20, y: 12, pixelX: 20 * this.tileSize, pixelY: 12 * this.tileSize, direction: 'up', color: 'cyan', moving: false, speed: 1.5, lastDirection: null, directionCooldown: 0, patrolTarget: null, searchMode: false },
-            { x: 21, y: 12, pixelX: 21 * this.tileSize, pixelY: 12 * this.tileSize, direction: 'up', color: 'orange', moving: false, speed: 1.5, lastDirection: null, directionCooldown: 0, patrolTarget: null, searchMode: false }
+            { x: 19, y: 12, pixelX: 19 * this.tileSize, pixelY: 12 * this.tileSize, direction: 'up', color: 'red', moving: false, speed: 3.45, lastDirection: null, directionCooldown: 0, patrolTarget: null, searchMode: false },
+            { x: 18, y: 12, pixelX: 18 * this.tileSize, pixelY: 12 * this.tileSize, direction: 'up', color: 'pink', moving: false, speed: 3.45, lastDirection: null, directionCooldown: 0, patrolTarget: null, searchMode: false },
+            { x: 20, y: 12, pixelX: 20 * this.tileSize, pixelY: 12 * this.tileSize, direction: 'up', color: 'cyan', moving: false, speed: 3.45, lastDirection: null, directionCooldown: 0, patrolTarget: null, searchMode: false },
+            { x: 21, y: 12, pixelX: 21 * this.tileSize, pixelY: 12 * this.tileSize, direction: 'up', color: 'orange', moving: false, speed: 3.45, lastDirection: null, directionCooldown: 0, patrolTarget: null, searchMode: false }
         ];
     }
     
@@ -1305,12 +1479,16 @@ class PacmanGame {
         this.player1.active = true;
         this.player1.powerMode = false;
         this.player1.powerModeTimer = 0;
+        this.player1.superPowerMode = false;
+        this.player1.superPowerModeTimer = 0;
         
         this.player2.score = 0;
         this.player2.lives = 3;
         this.player2.active = true;
         this.player2.powerMode = false;
         this.player2.powerModeTimer = 0;
+        this.player2.superPowerMode = false;
+        this.player2.superPowerModeTimer = 0;
         
         this.firstPlayerEliminated = false; // Reset elimination flag
         this.gameEnding = false; // Reset game ending flag
@@ -1332,7 +1510,20 @@ class PacmanGame {
     }
     
     renderMaze() {
-        this.ctx.fillStyle = '#00f';
+        // Check if any player is in super power mode for wall transparency
+        const anyPlayerInSuperPowerMode = this.player1.superPowerMode || this.player2.superPowerMode;
+        
+        this.ctx.save();
+        
+        if (anyPlayerInSuperPowerMode) {
+            // Make walls transparent and add a pulsing effect
+            const pulseAlpha = 0.2 + Math.sin(Date.now() / 200) * 0.1;
+            this.ctx.globalAlpha = pulseAlpha;
+            this.ctx.fillStyle = '#00f';
+        } else {
+            this.ctx.fillStyle = '#00f';
+        }
+        
         for (let row = 0; row < this.rows; row++) {
             for (let col = 0; col < this.cols; col++) {
                 if (this.maze[row] && this.maze[row][col] === 1) {
@@ -1340,6 +1531,8 @@ class PacmanGame {
                 }
             }
         }
+        
+        this.ctx.restore();
     }
     
     renderDots() {
@@ -1348,9 +1541,39 @@ class PacmanGame {
                 const centerX = dot.x * this.tileSize + this.tileSize / 2;
                 const centerY = dot.y * this.tileSize + this.tileSize / 2;
                 
-                if (dot.isPowerUp) {
+                if (dot.isSuperPowerUp) {
+                    // Render super power-up dots as large, multi-colored, pulsing circles
+                    const pulseSize = 16 + Math.sin(Date.now() / 150) * 6;
+                    const time = Date.now() / 300;
+                    
+                    // Create rainbow effect
+                    const hue = (time * 60) % 360;
+                    this.ctx.fillStyle = `hsl(${hue}, 100%, 50%)`;
+                    this.ctx.beginPath();
+                    this.ctx.arc(centerX, centerY, pulseSize, 0, 2 * Math.PI);
+                    this.ctx.fill();
+                    
+                    // Add intense glow effect
+                    this.ctx.shadowColor = `hsl(${hue}, 100%, 50%)`;
+                    this.ctx.shadowBlur = 20;
+                    this.ctx.beginPath();
+                    this.ctx.arc(centerX, centerY, pulseSize, 0, 2 * Math.PI);
+                    this.ctx.fill();
+                    this.ctx.shadowBlur = 0;
+                    
+                    // Add sparkle effect
+                    for (let i = 0; i < 8; i++) {
+                        const angle = (time + i) * 0.5;
+                        const sparkleX = centerX + Math.cos(angle) * (pulseSize + 5);
+                        const sparkleY = centerY + Math.sin(angle) * (pulseSize + 5);
+                        this.ctx.fillStyle = '#fff';
+                        this.ctx.beginPath();
+                        this.ctx.arc(sparkleX, sparkleY, 2, 0, 2 * Math.PI);
+                        this.ctx.fill();
+                    }
+                } else if (dot.isPowerUp) {
                     // Render power-up dots as larger, pulsing circles
-                    const pulseSize = 6 + Math.sin(Date.now() / 200) * 2;
+                    const pulseSize = 12 + Math.sin(Date.now() / 200) * 4;
                     this.ctx.fillStyle = '#ff0';
                     this.ctx.beginPath();
                     this.ctx.arc(centerX, centerY, pulseSize, 0, 2 * Math.PI);
@@ -1367,7 +1590,7 @@ class PacmanGame {
                     // Regular dots
                     this.ctx.fillStyle = '#fff';
                     this.ctx.beginPath();
-                    this.ctx.arc(centerX, centerY, 2, 0, 2 * Math.PI);
+                    this.ctx.arc(centerX, centerY, 4, 0, 2 * Math.PI);
                     this.ctx.fill();
                 }
             }
@@ -1379,12 +1602,43 @@ class PacmanGame {
         
         const centerX = player.pixelX + this.tileSize / 2;
         const centerY = player.pixelY + this.tileSize / 2;
-        const radius = this.tileSize / 2 - 2;
+        let radius = this.tileSize / 2 - 2;
         
-        // Determine player color (rainbow if in power mode)
+        // Make player 15% bigger when in super power mode
+        if (player.superPowerMode) {
+            radius *= 1.15;
+        }
+        
+        // Determine player color and effects
         let playerColor = player.color;
-        if (player.powerMode) {
-            // Rainbow flashing effect
+        if (player.superPowerMode) {
+            // Super power mode: intense rainbow effect with sparkles
+            const time = Date.now() / 80;
+            const hue = (time * 120) % 360; // Faster color cycling
+            playerColor = `hsl(${hue}, 100%, 60%)`;
+            
+            // Intense glowing aura around player
+            const glowRadius = radius + 8 + Math.sin(time) * 5;
+            this.ctx.shadowColor = playerColor;
+            this.ctx.shadowBlur = 25;
+            this.ctx.fillStyle = playerColor;
+            this.ctx.beginPath();
+            this.ctx.arc(centerX, centerY, glowRadius, 0, 2 * Math.PI);
+            this.ctx.fill();
+            this.ctx.shadowBlur = 0;
+            
+            // Add sparkle effects around player
+            for (let i = 0; i < 6; i++) {
+                const angle = (time + i) * 0.8;
+                const sparkleX = centerX + Math.cos(angle) * (radius + 10);
+                const sparkleY = centerY + Math.sin(angle) * (radius + 10);
+                this.ctx.fillStyle = '#fff';
+                this.ctx.beginPath();
+                this.ctx.arc(sparkleX, sparkleY, 3, 0, 2 * Math.PI);
+                this.ctx.fill();
+            }
+        } else if (player.powerMode) {
+            // Regular power mode: rainbow flashing effect
             const time = Date.now() / 100;
             const hue = (time * 60) % 360; // Cycle through hue every 6 seconds
             playerColor = `hsl(${hue}, 100%, 50%)`;
@@ -1467,22 +1721,76 @@ class PacmanGame {
             this.ctx.save();
             
             // Set transparency for overlapping ghosts
-            this.ctx.globalAlpha = 0.8;
+            this.ctx.globalAlpha = 0.9;
             
+            const x = ghost.pixelX + 2;
+            const y = ghost.pixelY + 2;
+            const width = this.tileSize - 4;
+            const height = this.tileSize - 4;
+            const radius = width / 2;
+            
+            // Draw ghost body
             this.ctx.fillStyle = ghost.color;
-            const centerX = ghost.pixelX + this.tileSize / 2;
-            const centerY = ghost.pixelY + this.tileSize / 2;
-            const radius = this.tileSize / 2 - 2;
-            
             this.ctx.beginPath();
-            this.ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+            
+            // Top rounded part (semicircle)
+            this.ctx.arc(x + radius, y + radius, radius, Math.PI, 0, false);
+            
+            // Right side
+            this.ctx.lineTo(x + width, y + height - 4);
+            
+            // Bottom wavy part (triangular points)
+            const waveWidth = width / 5;
+            for (let i = 0; i < 5; i++) {
+                const waveX = x + width - (i * waveWidth);
+                const waveY = y + height - (i % 2 === 0 ? 0 : 4);
+                this.ctx.lineTo(waveX, waveY);
+            }
+            
+            // Left side
+            this.ctx.lineTo(x, y + height - 4);
+            this.ctx.lineTo(x, y + radius);
+            
+            this.ctx.closePath();
             this.ctx.fill();
             
-            // Add a darker outline to make ghosts more visible
+            // Add subtle outline
             this.ctx.globalAlpha = 1.0;
-            this.ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
+            this.ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
             this.ctx.lineWidth = 1;
             this.ctx.stroke();
+            
+            // Draw eyes
+            this.ctx.fillStyle = 'white';
+            const eyeRadius = 6;
+            const eyeOffsetX = radius * 0.4;
+            const eyeOffsetY = radius * 0.3;
+            
+            // Left eye
+            this.ctx.beginPath();
+            this.ctx.arc(x + radius - eyeOffsetX, y + radius - eyeOffsetY, eyeRadius, 0, 2 * Math.PI);
+            this.ctx.fill();
+            
+            // Right eye
+            this.ctx.beginPath();
+            this.ctx.arc(x + radius + eyeOffsetX, y + radius - eyeOffsetY, eyeRadius, 0, 2 * Math.PI);
+            this.ctx.fill();
+            
+            // Draw pupils
+            this.ctx.fillStyle = 'black';
+            const pupilRadius = 3;
+            const pupilOffsetX = ghost.direction === 'left' ? -1 : ghost.direction === 'right' ? 1 : 0;
+            const pupilOffsetY = ghost.direction === 'up' ? -1 : ghost.direction === 'down' ? 1 : 0;
+            
+            // Left pupil
+            this.ctx.beginPath();
+            this.ctx.arc(x + radius - eyeOffsetX + pupilOffsetX, y + radius - eyeOffsetY + pupilOffsetY, pupilRadius, 0, 2 * Math.PI);
+            this.ctx.fill();
+            
+            // Right pupil
+            this.ctx.beginPath();
+            this.ctx.arc(x + radius + eyeOffsetX + pupilOffsetX, y + radius - eyeOffsetY + pupilOffsetY, pupilRadius, 0, 2 * Math.PI);
+            this.ctx.fill();
             
             // Restore context
             this.ctx.restore();
@@ -1509,4 +1817,7 @@ class PacmanGame {
     }
 }
 
-new PacmanGame();
+// Wait for DOM to be fully loaded before initializing the game
+document.addEventListener('DOMContentLoaded', () => {
+    new PacmanGame();
+});
